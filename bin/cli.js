@@ -6,8 +6,24 @@ const { executeRequest } = require('../lib/index.js')
 const options = {
     url : {type: 'string', short: 'u'},
     method: { type: 'string', short: 'm', default: 'GET'},
-    body: { type: 'string', short: 'b'}
+    body: { type: 'string', short: 'b'},
+    header: { type: 'string', short: 'H', multiple: true}
 };
+
+function parseHeaders(headerArray) {
+    if(!headerArray) { return undefined};
+
+    const headerObj = {};
+    for (const h of headerArray){
+        const splitIndex = h.indexOf(':');
+        if (splitIndex == -1 ){ continue}
+        const key = h.slice(0, splitIndex).trim();
+        const value = h.slice(splitIndex + 1).trim();
+        headerObj[key] = value;
+    }
+    return headerObj;
+}
+
 
 async function main() {
     
@@ -24,7 +40,14 @@ async function main() {
     }
         const response = await executeRequest(config);
         console.log(`${response.status}`)
-        console.log(response.body);
+        
+        if(!response.body){
+            process.exit(0);
+        }
+        for await (const chunk of response.body){
+            process.stdout.write(chunk);
+        }
+        console.log();
 
     }catch(error){
         console.error(`${error.message}`);
