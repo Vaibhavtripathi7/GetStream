@@ -7,6 +7,7 @@ function App(){
   const [url , seturl] = useState('https://httpbin.org/get');
   const [method, setMethod] = useState('GET');
   const [response, setResponse] = useState('Hit send to see the response...');
+  const [body, setBody] = useState("")
 
   const handleSend = () => {
     setResponse(`Simulating ${method} request to: ${url}\n...Waiting for C++ engine...`)
@@ -39,6 +40,8 @@ function App(){
         >
           SEND
           </button>
+        <textarea type='text' value ={body} onChange={(e)=> setBody(e.target.value)} style = {{width: '100%', height: '100px', marginTop: '10px'}}> </textarea>
+
       </div>
       {/* THE RESPONSE WINDOW */}
       <div style={{ background: '#11111b', padding: '20px', borderRadius: '8px', border: '1px solid #45475a' }}>
@@ -47,6 +50,7 @@ function App(){
           {response}
         </pre>
       </div>
+      <p>My C++ v8 engine is ready</p>
     </div>
   );
 }
