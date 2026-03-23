@@ -62,7 +62,7 @@ function App(){
             <select 
               value={method} 
               onChange={(e) => setMethod(e.target.value)}
-              style={{ background: 'var(--bg-panel)', color: 'var(--accent)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
+              style={{ background: 'var(--bg-panel)', color: 'var(--accent)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', fontWeight: 'bold', outline: 'none', cursor: 'pointer', fontSize:'1rem' }}
             >
               <option value="GET">GET</option>
               <option value="POST">POST</option>
@@ -71,7 +71,7 @@ function App(){
               type="text" 
               value={url} 
               onChange={(e) => setUrl(e.target.value)}
-              style={{ flex: 1, background: 'var(--bg-panel)', color: 'white', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', outline: 'none', fontFamily: 'inherit' }}
+              style={{ flex: 1, background: 'var(--bg-panel)', color: 'white', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', outline: 'none', fontFamily: 'inherit' , fontSize:'0.95rem', letterSpacing:'0.8px'}}
               placeholder="https://api.com"
             />
           </div>
@@ -100,10 +100,10 @@ function App(){
           
           {/* Status Bar */}
           <div style={{ background: '#010409', padding: '10px 15px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-            <span style={{ color: '#8b949e' }}>Network Response</span>
+            <span style={{ color: '#8b949e', fontSize: '16px', fontWeight:'bold' }}>Network Response</span>
             <div>
               {status && <span style={{ color: status >= 200 && status < 300 ? 'var(--success)' : 'var(--error)', marginRight: '15px', fontWeight: 'bold' }}>Status: {status}</span>}
-              {time && <span style={{ color: '#8b949e' }}>Time: {time}ms</span>}
+              {time && <span style={{ color: '#3cff26ff' }}>Time: {time}ms</span>}
             </div>
           </div>
 
