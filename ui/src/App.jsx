@@ -9,8 +9,31 @@ function App(){
   const [response, setResponse] = useState('Hit send to see the response...');
   const [body, setBody] = useState("")
 
-  const handleSend = () => {
-    setResponse(`Simulating ${method} request to: ${url}\n...Waiting for C++ engine...`)
+  const handleSend = async () => {
+    setResponse('Waiting for response...');
+    try {
+      
+      const res = await fetch('https://localhost:3000/api/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url: url,
+          method: method,
+          body: method === 'POST' ? body: undefined 
+        })
+      });
+      const data = await res.json();
+      if(data.error){
+        setResponse(`error: ${data.error}`);
+
+      }else {
+        setResponse(`Status: ${data.status} (${data.time}ms \n\n${data.data})`);
+      }
+    } catch (error) {
+      setResponse(`fatal error`)
+    }
   };
 
 
