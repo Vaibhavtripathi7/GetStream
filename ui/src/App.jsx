@@ -13,7 +13,7 @@ function App(){
     setResponse('Waiting for response...');
     try {
       
-      const res = await fetch('https://localhost:3000/api/execute', {
+      const res = await fetch('http://localhost:3000/api/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -21,7 +21,8 @@ function App(){
         body: JSON.stringify({
           url: url,
           method: method,
-          body: method === 'POST' ? body: undefined 
+          body: method === 'POST' ? body: undefined ,
+          timeout: 5000
         })
       });
       const data = await res.json();
