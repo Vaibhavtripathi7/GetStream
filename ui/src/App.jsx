@@ -49,45 +49,71 @@ function App(){
     }
   };
 
-
   return (
-    <div style={{padding: '50px', color: 'white', fontfamily: 'sans-serif',background: '#1e1e2e', color: '#cdd6f4', minHeight: '100vh'}}>
-      <h1>Postman CLI Dashboard</h1>
-      {/* The controlled form*/}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px'}}>
-        {/* Method Dropdown */}
-        <select value = {method} onChange={(e)=> setMethod(e.target.value)}
-         style={{padding: '10px', fontSize: '16px'}}
+      <div style={{ display: 'flex', height: '100vh', padding: '20px', gap: '20px', boxSizing: 'border-box' }}>
+        
+        {/* LEFT PANE: CONTROLS */}
+        <div style={{ flex: '0 0 350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <h2 style={{ margin: '0 0 10px 0', color: 'var(--accent)', fontSize: '1.2rem' }}>
+            ⚡ Postman-CLI
+          </h2>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <select 
+              value={method} 
+              onChange={(e) => setMethod(e.target.value)}
+              style={{ background: 'var(--bg-panel)', color: 'var(--accent)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+            </select>
+            <input 
+              type="text" 
+              value={url} 
+              onChange={(e) => setUrl(e.target.value)}
+              style={{ flex: 1, background: 'var(--bg-panel)', color: 'white', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', outline: 'none', fontFamily: 'inherit' }}
+              placeholder="https://api.com"
+            />
+          </div>
+
+          {method === 'POST' && (
+            <textarea 
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder='{"key": "value"}'
+              style={{ height: '150px', background: 'var(--bg-panel)', color: 'var(--text-main)', border: '1px solid var(--border)', padding: '10px', borderRadius: '6px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+            />
+          )}
+
+          <button 
+            onClick={handleSend}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+            onMouseOver={(e) => e.target.style.opacity = 0.8}
+            onMouseOut={(e) => e.target.style.opacity = 1}
           >
-            <option value="GET">GET</option>
-            <option value="POST">POST</option>
-
-        </select>
-        {/* URL Input box */}
-        <input
-          type="text"
-          value={url}
-          onChange={(e)=> seturl(e.target.value)}
-          style={{flex: 1, padding: '10px', fontSize: '16px'}}  
-        />
-        <button
-         onClick={handleSend}
-         style={{padding: '10px 20px', fontSize: '16px', cursor: 'pointer', background: '#89b4fa', color: '#11111b', border: 'none', fontWeight: 'bold'}}
-        >
-          SEND
+            EXECUTE
           </button>
-        <textarea type='text' value ={body} onChange={(e)=> setBody(e.target.value)} style = {{width: '100%', height: '100px', marginTop: '10px'}}> </textarea>
+        </div>
 
+        {/* RIGHT PANE: RESPONSE MATRIX */}
+        <div style={{ flex: 1, background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: '6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          
+          {/* Status Bar */}
+          <div style={{ background: '#010409', padding: '10px 15px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+            <span style={{ color: '#8b949e' }}>Network Response</span>
+            <div>
+              {status && <span style={{ color: status >= 200 && status < 300 ? 'var(--success)' : 'var(--error)', marginRight: '15px', fontWeight: 'bold' }}>Status: {status}</span>}
+              {time && <span style={{ color: '#8b949e' }}>Time: {time}ms</span>}
+            </div>
+          </div>
+
+          {/* JSON Payload */}
+          <pre style={{ margin: 0, padding: '15px', overflowY: 'auto', flex: 1, color: 'var(--success)', fontSize: '0.95rem', lineHeight: '1.5' }}>
+            {response}
+          </pre>
+
+        </div>
       </div>
-      {/* THE RESPONSE WINDOW */}
-      <div style={{ background: '#11111b', padding: '20px', borderRadius: '8px', border: '1px solid #45475a' }}>
-        <h3 style={{ marginTop: 0, color: '#a6e3a1' }}>Response:</h3>
-        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-          {response}
-        </pre>
-      </div>
-      <p>My C++ v8 engine is ready</p>
-    </div>
-  );
-}
+    );
+  }
 export default App;
