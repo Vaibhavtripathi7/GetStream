@@ -1,16 +1,18 @@
 import { useState } from 'react';
 
-
-
 function App(){
 
   const [url , seturl] = useState('https://httpbin.org/get');
   const [method, setMethod] = useState('GET');
   const [response, setResponse] = useState('Hit send to see the response...');
   const [body, setBody] = useState("")
+  const [status, setStatus] = useState(null);
+  const [time, setTime] = useState(null)
 
   const handleSend = async () => {
     setResponse('Waiting for response...');
+    setStatus(null)
+    setTime(null);
     try {
       
       const res = await fetch('http://localhost:3000/api/execute', {
@@ -28,12 +30,22 @@ function App(){
       const data = await res.json();
       if(data.error){
         setResponse(`error: ${data.error}`);
+        setStatus('ERROR');
 
       }else {
-        setResponse(`Status: ${data.status} (${data.time}ms \n\n${data.data})`);
+        try {
+          const parsed = JSON.parse(data.data)
+          setResponse(JSON.stringify(parsed, null, 2));
+
+        } catch{
+          setResponse(data.data)
+        }
+        setStatus(data.status);
+        setTime(data.time);
       }
     } catch (error) {
       setResponse(`fatal error`)
+      setStatus('503');
     }
   };
 
