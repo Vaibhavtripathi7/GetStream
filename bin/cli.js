@@ -9,7 +9,8 @@ const options = {
     body: { type: 'string', short: 'b'},
     header: { type: 'string', short: 'H', multiple: true},
     file: {type: 'string', short: 'f'},
-    timeout: {type: 'string', short: 't', default: '5000'}
+    timeout: {type: 'string', short: 't', default: '5000'},
+    ui: {type: 'boolean', short: 'U'}
 };
 
 function parseHeaders(headerArray) {
@@ -30,6 +31,11 @@ function parseHeaders(headerArray) {
 async function main() {
     const {values} = parseArgs({options})
 
+    if (values.ui) {
+        const { startUIServer } = require('../lib/server.js');
+        startUIServer();
+        return;
+    }
     try {
         if (!values.url) {
             console.error('\x1b[31mError:\x1b[0m URL is required. Use -u <url>');
