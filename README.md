@@ -4,13 +4,12 @@
 [![React SPA](https://img.shields.io/badge/UI-React_SPA-61DAFB.svg)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-GetStream is a **fast HTTP networking tool** that works in the terminal and comes with a built-in React dashboard. It is meant to get around browser CORS restrictions and make API requests with **no external backend dependencies and low latency**.
+GetStream is a **fast, terminal-first API testing** and debugging client. It serves as a lightweight alternative to Postman and comes with built-in react dashboard. It is meant to get around browser CORS restrictions and make API requests with **no external backend dependencies and low latency**.
 
-![Dashboard Demo](./assets/demo.gif)**
 
 ## Technical Architecture
 
-It gets rid of heavy **Electron** wrappers and uses a **native Node.js routing** and a compiled React frontend instead. This makes boot times very fast and uses very little memory.
+GetStream gets rid of heavy **Electron** wrappers and uses a **native Node.js routing** and a compiled React frontend instead. This makes boot times very fast and uses very little memory.
 
 * **Network Bridge:** The engine uses a custom preflight (`OPTIONS`) handshake to get around browser Same-Origin Policies. React sends local commands to the Node backend, which opens raw TCP sockets to the target API. This makes it possible for 100% of requests to reach the API.
 
@@ -46,7 +45,7 @@ cd ..
 ```
 
 ### 2. Global installation (linux/macOS/Windows)
-Link the package to your systmes global binaries so you can execute it from any dir.
+Link the package to your systems global binaries so you can execute it from any directory.
 
 `NOTE:` *Untested in macOS and windows.* 
 
@@ -59,7 +58,7 @@ It can be entirely used from terminal using keybaord or launched into ui.
 
 Command/Flag | Description | Example |
 | --- |  --- |  --- | 
-|`--ui`. `-U`| Boot Dashboard| `req --ui`|
+|`--ui`, `-U`| Boot Dashboard| `req --ui`|
 |`--url`, `-u`| Target API URL| `req -u https://api.com/data`|
 |`--method`, `-m`| HTTP Method | `req -u <url> -m POST`|
 |`--header`, `-H`| Inject Custom Headers| `req -u <url> -H "Auth: Bearer 123"`|
