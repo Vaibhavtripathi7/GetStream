@@ -164,3 +164,50 @@ test('the live view shows generated text even when the stream opens with a textl
   assert.ok(visible(term.output).includes('Hello'));
   assert.ok(!term.output.includes('message_start'));
 });
+
+class FakeKeyboard extends EventEmitter {
+  isTTY = true;
+  isRaw = false;
+  reading = false;
+  setRawMode(on) {
+    this.isRaw = on;
+  }
+  resume() {
+    this.reading = true;
+  }
+  pause() {
+    this.reading = false;
+  }
+}
+
+test('resuming after the request already ended leaves the terminal alone', () => {
+  const term = new FakeTerminal();
+  const keys = new FakeKeyboard();
+  let suspended = 0;
+  const live = new LiveView(term, { input: keys, render: () => ['panel'], interval: 1e6, suspend: () => suspended++ });
+  live.start();
+  assert.equal(keys.isRaw, true);
+  keys.emit('data', Buffer.from([0x1a]));
+  assert.equal(suspended, 1);
+  assert.equal(keys.isRaw, false);
+  live.stop();
+  term.output = '';
+  process.emit('SIGCONT');
+  assert.equal(term.output, '');
+  assert.equal(keys.isRaw, false);
+  assert.equal(keys.reading, false);
+});
+
+test('resuming while the request is still running takes the terminal back', () => {
+  const term = new FakeTerminal();
+  const keys = new FakeKeyboard();
+  const live = new LiveView(term, { input: keys, render: () => ['panel'], interval: 1e6, suspend: () => {} });
+  live.start();
+  keys.emit('data', Buffer.from([0x1a]));
+  process.emit('SIGCONT');
+  assert.equal(keys.isRaw, true);
+  assert.ok(term.output.endsWith('\x1b[?2026l'));
+  live.stop();
+  assert.equal(keys.isRaw, false);
+  assert.equal(keys.reading, false);
+});
