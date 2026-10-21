@@ -102,7 +102,8 @@ For streams:
 - **tok/s** is `(tokens - 1) / (last token time - first token time)`, the
   decode rate after the first token.
 
-`--timeline` adds the arrival time of every chunk to the JSON report.
+`--timeline` adds the arrival times to the JSON report: of every chunk with
+text for an LLM stream, of every event otherwise.
 
 ## Output
 
@@ -125,7 +126,8 @@ Request
   -d, --data <body>           request body; @file reads a file, @- reads stdin
   -L, --location              follow redirects, up to 10
   -k, --insecure              do not verify the TLS certificate
-      --compressed            ask for gzip, deflate or br
+      --compressed            ask for gzip, deflate or br (a compressed reply
+                              is always decoded)
 
 Timeouts (500, 500ms or 10s)
       --connect-timeout <t>   until TCP and TLS are done (default 10s)
@@ -199,13 +201,18 @@ npm run bench    # writes bench/results/
 ```
 
 ```
-bin/cli.js        argument handling, output selection, exit codes
+bin/cli.js        help, output selection, exit codes
+lib/args.js       flags, URL and header checks, request body
 lib/http.js       one request with timing marks, timeouts, redirects, decoding
+lib/run.js        one request or many, feeding the body to meter and output
 lib/sse.js        SSE parser (WHATWG rules)
 lib/lines.js      NDJSON line splitter
 lib/llm.js        OpenAI, Anthropic, Gemini and Ollama chunk formats
 lib/stream.js     per-event timing, first token, gaps, token rate
+lib/stats.js      percentiles
 lib/report.js     the report behind every output, run aggregation
+lib/redact.js     hides credentials in everything printed about a request
+lib/format.js     durations and sizes
 lib/output.js     plain, JSON and live outputs
 lib/term/         live view, panel rendering, text width, sanitising
 bench/            mock server and benchmarks
