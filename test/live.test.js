@@ -120,8 +120,19 @@ test('end to end in a pseudo terminal: live panel, then the summary, then Ctrl-C
   assert.match(visible(out), /word0 word1 word2 word3 word4/);
   assert.match(visible(out), /200 OK GET .* sse · openai/);
 
+  // Ctrl-C only once the panel shows the request waiting, however slowly node starts.
   const child = script('/hang', 'int', ['pipe', 'ignore', 'ignore']);
-  setTimeout(() => child.stdin.write('\x03'), 300);
+  const poll = setInterval(() => {
+    let seen = '';
+    try {
+      seen = readFileSync(join(dir, 'int'), 'utf8');
+    } catch {}
+    if (seen.includes('waiting')) {
+      clearInterval(poll);
+      child.stdin.write('\x03');
+    }
+  }, 20);
+  t.after(() => clearInterval(poll));
   assert.equal(await exited(child), 130);
   const interrupted = readFileSync(join(dir, 'int'), 'utf8');
   assert.match(visible(interrupted), /✗ aborted during wait/);

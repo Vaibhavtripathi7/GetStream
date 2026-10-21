@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { parseCli, loadBody, defaultHeaders, UsageError } from '../lib/args.js';
-import { runOnce } from '../lib/run.js';
-import { PlainOutput, JsonOutput, LiveOutput } from '../lib/output.js';
+import { runOnce, runMany } from '../lib/run.js';
+import { PlainOutput, JsonOutput, LiveOutput, LiveRunsOutput } from '../lib/output.js';
 
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -33,6 +33,10 @@ Output
       --no-color              no colours (NO_COLOR is honoured too)
   -f, --fail                  exit with 4 when the status is 400 or above
 
+Repeat
+  -n, --runs <n>              send the request n times and print percentiles
+      --keep-alive            reuse one connection across runs
+
   -h, --help                  show this help
   -V, --version               show the version
 
@@ -40,16 +44,27 @@ Exit status: 0 ok, 1 usage, 2 network or TLS error, 3 timeout,
 4 HTTP error with --fail, 130 interrupted.
 `;
 
+const ERROR_EXIT = { timeout: 3, aborted: 130 };
+
 export function exitCode(report, options) {
-  if (report.error) return { timeout: 3, aborted: 130 }[report.error.kind] ?? 2;
+  if (report.error) return ERROR_EXIT[report.error.kind] ?? 2;
   if (options.fail && report.response.status >= 400) return 4;
+  return 0;
+}
+
+function runsExitCode(summary, options) {
+  if (summary.aborted) return 130;
+  const kinds = Object.keys(summary.failed);
+  if (kinds.length > 0) return kinds.every((k) => k === 'timeout') ? 3 : 2;
+  if (options.fail && Object.keys(summary.statuses).some((s) => Number(s) >= 400)) return 4;
   return 0;
 }
 
 function createOutput(io) {
   if (io.options.json) return new JsonOutput(io);
-  if (io.options.tui && io.stdout.isTTY) return new LiveOutput(io);
-  return new PlainOutput(io);
+  const live = io.options.tui && io.stdout.isTTY;
+  if (io.options.runs > 1) return live ? new LiveRunsOutput(io) : new PlainOutput(io);
+  return live ? new LiveOutput(io) : new PlainOutput(io);
 }
 
 async function main(argv) {
@@ -93,6 +108,10 @@ async function main(argv) {
     onInterrupt: () => controller.abort(),
   };
   const output = createOutput(io);
+  if (options.runs > 1) {
+    const summary = await runMany(request, options, output, { signal: controller.signal });
+    return runsExitCode(summary, options);
+  }
   const report = await runOnce(request, options, output, { signal: controller.signal });
   return brokenPipe ? 0 : exitCode(report, options);
 }
