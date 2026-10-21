@@ -73,7 +73,7 @@ test('the summary carries the numbers and no escapes when colour is off', () => 
   assert.ok(!text.includes('\x1b'));
   assert.match(text, /^200 OK POST https:\/\/api\.example\.com/);
   assert.match(text, /dns 12\.0 ms {2}tcp 18\.0 ms {2}tls 41\.0 ms {2}wait 380 ms {2}body 2\.70 s/);
-  assert.match(text, /first token 451 ms {2}· {2}312 tokens {2}· {2}114 tok\/s/);
+  assert.match(text, /first token 451 ms {2}· {2}312 tokens {2}· {2}114 tok\/s\ngap between chunks {2}p50 8\.0 ms/);
   assert.match(text, /! stream ended without a completion marker/);
 });
 

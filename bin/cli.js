@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { parseCli, loadBody, defaultHeaders, UsageError } from '../lib/args.js';
 import { runOnce } from '../lib/run.js';
-import { PlainOutput, JsonOutput } from '../lib/output.js';
+import { PlainOutput, JsonOutput, LiveOutput } from '../lib/output.js';
 
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -26,8 +26,10 @@ Timeouts (500, 500ms or 10s)
 Output
   -i, --include               print the response status and headers
   -q, --quiet                 do not print the body
+      --raw                   show raw stream bytes instead of the generated text
       --json                  print a JSON report instead of the body
       --timeline              add per-event arrival times to the JSON report
+      --no-tui                plain output even on a terminal
       --no-color              no colours (NO_COLOR is honoured too)
   -f, --fail                  exit with 4 when the status is 400 or above
 
@@ -42,6 +44,12 @@ export function exitCode(report, options) {
   if (report.error) return { timeout: 3, aborted: 130 }[report.error.kind] ?? 2;
   if (options.fail && report.response.status >= 400) return 4;
   return 0;
+}
+
+function createOutput(io) {
+  if (io.options.json) return new JsonOutput(io);
+  if (io.options.tui && io.stdout.isTTY) return new LiveOutput(io);
+  return new PlainOutput(io);
 }
 
 async function main(argv) {
@@ -76,8 +84,15 @@ async function main(argv) {
     controller.abort();
   });
 
-  const io = { stdout: process.stdout, stderr: process.stderr, options, muted: () => brokenPipe };
-  const output = options.json ? new JsonOutput(io) : new PlainOutput(io);
+  const io = {
+    stdout: process.stdout,
+    stderr: process.stderr,
+    stdin: options.data === '@-' ? null : process.stdin,
+    options,
+    muted: () => brokenPipe,
+    onInterrupt: () => controller.abort(),
+  };
+  const output = createOutput(io);
   const report = await runOnce(request, options, output, { signal: controller.signal });
   return brokenPipe ? 0 : exitCode(report, options);
 }
