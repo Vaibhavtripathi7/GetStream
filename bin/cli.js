@@ -16,7 +16,10 @@ Request
   -X, --method <method>       default GET, or POST when a body is given
   -H, --header <name: value>  add a header, repeatable
   -d, --data <body>           request body; @file reads a file, @- reads stdin
+  -L, --location              follow redirects, up to 10
   -k, --insecure              do not verify the TLS certificate
+      --compressed            ask for gzip, deflate or br (a compressed reply
+                              is always decoded)
 
 Timeouts (500, 500ms or 10s)
       --connect-timeout <t>   until TCP and TLS are done (default 10s)
@@ -82,7 +85,7 @@ async function main(argv) {
   const request = {
     url: options.url,
     method: options.method,
-    headers: defaultHeaders(options.headers, body, { userAgent: `req/${version}` }),
+    headers: defaultHeaders(options.headers, body, { userAgent: `req/${version}`, compressed: options.compressed }),
     body,
   };
 

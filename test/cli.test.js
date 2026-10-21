@@ -113,3 +113,21 @@ test('stops quietly when the reader closes the pipe', async (t) => {
   assert.equal(code, 0);
   assert.equal(stderr, '');
 });
+
+test('-L follows redirects and reports the hops', async (t) => {
+  const srv = await server(t, (req, res) => {
+    if (req.url.startsWith('/start')) {
+      res.writeHead(307, { location: '/end' });
+      return res.end();
+    }
+    res.end(req.method);
+  });
+  const { code, stdout } = await run([srv.url('/start?token=abc').href, '-L', '-X', 'DELETE', '--json']);
+  assert.equal(code, 0);
+  const report = JSON.parse(stdout);
+  assert.equal(report.response.status, 200);
+  assert.match(report.response.url, /\/end$/);
+  assert.deepEqual(report.response.redirects.map((r) => r.status), [307]);
+  assert.match(report.response.redirects[0].url, /token=REDACTED/);
+  assert.ok(report.timing.redirect > 0);
+});
