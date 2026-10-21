@@ -102,3 +102,11 @@ test('draws the phase in progress while live', () => {
   assert.match(lines[0], /^⠋ waiting POST/);
   assert.match(lines[2], /wait 100 ms…$/);
 });
+
+test('the gap sparkline is flat for a steady stream and spikes on a stall', () => {
+  const style = createStyle(false);
+  const steady = renderPanel(report, { style, gaps: [20, 20.3, 19.9, 20.1] }).at(-2);
+  assert.equal(steady, '▃▃▃▃');
+  const stall = renderPanel(report, { style, gaps: [20, 20, 200, 20] }).at(-2);
+  assert.equal(stall, '▃▃█▃');
+});
