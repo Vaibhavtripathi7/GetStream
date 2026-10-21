@@ -9,6 +9,6 @@ const only = process.argv.slice(2);
 for (const name of benches.filter((b) => only.length === 0 || only.includes(b))) {
   console.log(`\n# ${name}`);
   const file = fileURLToPath(new URL(`./${name}.js`, import.meta.url));
-  const { status } = spawnSync(process.execPath, [file], { stdio: 'inherit' });
+  const { status } = spawnSync(process.execPath, ['--expose-gc', file], { stdio: 'inherit' });
   if (status !== 0) console.log(`${name} failed with status ${status}${name === 'phases' ? ' (needs internet)' : ''}`);
 }

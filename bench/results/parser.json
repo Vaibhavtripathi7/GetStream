@@ -5,27 +5,28 @@
     "memoryGB": 6,
     "node": "v24.12.0",
     "os": "Linux 6.18.57-2-lts",
-    "date": "2026-10-21T21:47:37.307Z"
+    "date": "2026-10-21T21:52:04.917Z"
   },
   "method": "median of 7 passes over 50 MB in 16 KB chunks, in one process",
   "results": [
     {
       "name": "SSE parser only",
-      "mbPerSecond": 382.5,
-      "eventsPerSecond": 2511962,
-      "medianMs": 130.7
+      "mbPerSecond": 392.1,
+      "eventsPerSecond": 2575272,
+      "medianMs": 127.5
     },
     {
       "name": "SSE + JSON + LLM metrics",
-      "mbPerSecond": 74.8,
-      "eventsPerSecond": 491058,
-      "medianMs": 668.7
+      "mbPerSecond": 73.6,
+      "eventsPerSecond": 483056,
+      "medianMs": 679.8
     },
     {
       "name": "NDJSON + JSON + LLM metrics",
-      "mbPerSecond": 97.2,
-      "eventsPerSecond": 823551,
-      "medianMs": 514.5
+      "mbPerSecond": 97.6,
+      "eventsPerSecond": 826830,
+      "medianMs": 512.4
     }
-  ]
+  ],
+  "retainedBytesPerEvent": 9.4
 }

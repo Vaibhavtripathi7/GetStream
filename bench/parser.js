@@ -66,4 +66,21 @@ const results = [
   })),
 ];
 
-save('parser', { method: `median of ${ITERATIONS} passes over ${TARGET / 2 ** 20} MB in ${CHUNK / 1024} KB chunks, in one process`, results });
+// Memory a meter keeps per event once garbage is collected: the gap samples.
+let retainedBytesPerEvent = null;
+if (globalThis.gc) {
+  gc();
+  const before = process.memoryUsage().heapUsed;
+  const meter = new StreamMeter({ contentType: 'text/event-stream' });
+  for (const c of sse.chunks) meter.push(c, 0);
+  meter.finish(0);
+  gc();
+  retainedBytesPerEvent = round((process.memoryUsage().heapUsed - before) / sse.events, 1);
+  console.log(`retained after GC: ${retainedBytesPerEvent} bytes per event (${meter.events.toLocaleString('en')} events kept alive)`);
+}
+
+save('parser', {
+  method: `median of ${ITERATIONS} passes over ${TARGET / 2 ** 20} MB in ${CHUNK / 1024} KB chunks, in one process`,
+  results,
+  retainedBytesPerEvent,
+});
