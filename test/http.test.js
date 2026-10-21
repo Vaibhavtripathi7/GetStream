@@ -12,8 +12,8 @@ test('marks phases in order for a hostname', async (t) => {
   url.hostname = 'localhost';
   const ex = await send({ url });
   assert.equal((await readAll(ex.body)).toString(), 'ok');
-  const { dns, connect, sent, firstByte, end } = ex.timing;
-  assert.ok(dns !== null && dns <= connect && connect <= sent && sent <= firstByte && firstByte <= end);
+  const { dns, connect, firstByte, end } = ex.timing;
+  assert.ok(dns !== null && dns <= connect && connect <= firstByte && firstByte <= end);
   assert.equal(ex.timing.tls, null);
 });
 
@@ -360,4 +360,40 @@ test('a failure after a redirect keeps the time of the earlier hops', async (t) 
     assert.ok(phaseDurations(err.timing).total >= 40);
     return true;
   });
+});
+
+test('a signal that is already aborted stops the request', async (t) => {
+  const srv = await listen((req, res) => res.end());
+  t.after(srv.close);
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(send({ url: srv.url('/') }, { signal: controller.signal }), (err) => err.kind === 'aborted');
+});
+
+test('rejects a redirect whose Location is not a URL', async (t) => {
+  const srv = await listen((req, res) => {
+    res.writeHead(302, { location: 'http://[broken' });
+    res.end();
+  });
+  t.after(srv.close);
+  await assert.rejects(sendFollowing({ url: srv.url('/') }, { maxRedirects: 3 }), /invalid Location header/);
+});
+
+test('passes an unknown encoding through and decodes zstd where Node can', async (t) => {
+  const srv = await listen((req, res) => {
+    if (req.url === '/zstd') {
+      res.writeHead(200, { 'content-encoding': 'zstd' });
+      return res.end(zlib.zstdCompressSync('zstd body'));
+    }
+    res.writeHead(200, { 'content-encoding': 'compress' });
+    res.end('as sent');
+  });
+  t.after(srv.close);
+  const unknown = await send({ url: srv.url('/') });
+  assert.equal((await readAll(unknown.body)).toString(), 'as sent');
+  assert.equal(unknown.encoding, null);
+  if (zlib.zstdCompressSync) {
+    const zstd = await send({ url: srv.url('/zstd') });
+    assert.equal((await readAll(zstd.body)).toString(), 'zstd body');
+  }
 });

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { aggregateRuns } from '../lib/report.js';
+import { aggregateRuns, buildReport } from '../lib/report.js';
 import { renderRuns } from '../lib/term/panel.js';
 import { createStyle } from '../lib/term/style.js';
 import { listen } from './helpers/server.js';
@@ -93,4 +93,15 @@ test('rejects a run count that is not a positive whole number', async () => {
   for (const n of ['0', '-1', '2.5', 'many']) {
     assert.equal((await run(['example.com', '-n', n])).code, 1);
   }
+});
+
+test('warns when the first address failed and another was used', () => {
+  const exchange = {
+    url: new URL('http://localhost/'), status: 200, statusMessage: 'OK', httpVersion: '1.1', headers: {},
+    remote: { address: '127.0.0.1' }, tls: null, reused: false, redirects: [], encoding: null,
+    attempts: [{ address: '::1', start: 1, end: 1.5, error: 'ECONNREFUSED' }, { address: '127.0.0.1', start: 1.5, end: 2, error: null }],
+    timing: { dns: 1, connect: 2, tls: null, firstByte: 3, end: 4, failed: null, redirect: null },
+  };
+  const report = buildReport({ request: { method: 'GET', url: exchange.url, headers: [], body: null }, exchange });
+  assert.deepEqual(report.warnings, ['::1 failed with ECONNREFUSED after 0.5 ms, used 127.0.0.1']);
 });

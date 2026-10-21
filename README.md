@@ -88,6 +88,9 @@ is your own.
 | body | headers | the last byte arrives |
 | total | start | the last byte arrives |
 
+When a request fails, total runs to the moment it failed and the summary
+marks the phase it failed in with ✗.
+
 For streams:
 
 - **first token** is the time from the start of the request to the first
@@ -114,8 +117,8 @@ text for an LLM stream, of every event otherwise.
 - **`--json`**: one report on stdout instead of the body.
 
 For LLM streams the live view shows the generated text; `--raw` shows the
-events instead. The live view does not print a binary body; redirect stdout
-to keep it.
+events instead. A binary body is not printed to a terminal, in either view;
+redirect stdout to keep it.
 
 ## Options
 

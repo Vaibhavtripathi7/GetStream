@@ -154,3 +154,20 @@ test('extract ignores ordinary JSON and pings', () => {
   assert.equal(extract([1, 2]), null);
   assert.equal(extract('text'), null);
 });
+
+test('gemini and OpenAI-compatible streams finish on a finish reason', () => {
+  assert.equal(meter('text/event-stream', sseEvents('gemini.sse')).stats.done, true);
+  const noMarker = ['data: {"choices":[{"delta":{"content":"a"}}]}\n\n', 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'];
+  assert.equal(meter('text/event-stream', noMarker).stats.done, true);
+  assert.equal(meter('text/event-stream', noMarker.slice(0, 1)).stats.done, false);
+});
+
+test('records provider errors from anthropic and the responses api', () => {
+  const anthropic = meter('text/event-stream', [
+    'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":1}}}\n\n',
+    'event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}\n\n',
+  ]);
+  assert.deepEqual(anthropic.stats.errors, ['Overloaded']);
+  const responses = meter('text/event-stream', ['data: {"type":"response.failed","response":{"error":{"message":"quota"}}}\n\n']);
+  assert.deepEqual(responses.stats.errors, ['quota']);
+});

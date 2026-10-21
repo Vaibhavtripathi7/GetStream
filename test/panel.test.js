@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stringWidth, truncate, splitRows, sanitize } from '../lib/term/text.js';
-import { renderPanel } from '../lib/term/panel.js';
+import { renderPanel, renderRuns } from '../lib/term/panel.js';
 import { createStyle } from '../lib/term/style.js';
 import { formatMs, formatBytes } from '../lib/format.js';
 
@@ -11,6 +11,7 @@ test('measures display width', () => {
   assert.equal(stringWidth('👋 hi'), 5);
   assert.equal(stringWidth('é'), 1);
   assert.equal(stringWidth('\x1b[32mok\x1b[39m'), 2);
+  assert.equal(stringWidth('\u{F0000}'), 1);
 });
 
 test('truncates by width and keeps colours closed', () => {
@@ -49,6 +50,7 @@ test('formats durations and sizes', () => {
   assert.equal(formatBytes(999), '999 B');
   assert.equal(formatBytes(1500), '1.5 kB');
   assert.equal(formatBytes(2_500_000), '2.50 MB');
+  assert.equal(formatBytes(1_250_000_000), '1.25 GB');
 });
 
 const report = {
@@ -112,4 +114,23 @@ test('the gap sparkline is flat for a steady stream and spikes on a stall', () =
   assert.equal(steady, '▃▃▃▃');
   const stall = renderPanel(report, { style, gaps: [20, 20, 200, 20] }).at(-2);
   assert.equal(stall, '▃▃█▃');
+});
+
+test('a failed request shows the phase it failed in', () => {
+  const failed = {
+    ...report,
+    response: null,
+    body: null,
+    warnings: [],
+    timing: { dns: 10, tcp: 20, tls: null, wait: null, body: null, total: 100 },
+    error: { kind: 'tls', phase: 'tls', message: 'certificate has expired' },
+  };
+  const legend = renderPanel(failed, { style: createStyle(false) })[2];
+  assert.equal(legend, 'dns 10.0 ms  tcp 20.0 ms  tls 70.0 ms ✗');
+});
+
+test('the live run counter never passes the planned count', () => {
+  const summary = { runs: 3, planned: 3, statuses: { 200: 3 }, failed: {}, timing: {}, request: { method: 'GET', url: 'http://x/' } };
+  const [head] = renderRuns(summary, { style: createStyle(false), live: { frame: 0, elapsed: 5 } });
+  assert.match(head, /run 3\/3/);
 });

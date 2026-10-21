@@ -6,9 +6,9 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LiveView } from '../lib/term/live.js';
-import { LiveOutput } from '../lib/output.js';
+import { LiveOutput, LiveRunsOutput, PlainOutput } from '../lib/output.js';
 import { StreamMeter } from '../lib/stream.js';
-import { buildReport } from '../lib/report.js';
+import { aggregateRuns, buildReport } from '../lib/report.js';
 import { stringWidth } from '../lib/term/text.js';
 import { listen } from './helpers/server.js';
 
@@ -210,4 +210,75 @@ test('resuming while the request is still running takes the terminal back', () =
   live.stop();
   assert.equal(keys.isRaw, false);
   assert.equal(keys.reading, false);
+});
+
+function liveOutput(options = {}) {
+  const term = new FakeTerminal();
+  const output = new LiveOutput({ stdout: term, options: { color: false, quiet: false, raw: false, include: false, ...options }, onInterrupt() {} });
+  const request = { method: 'GET', url: new URL('http://api.test/'), headers: [], body: null };
+  output.begin(request);
+  return { term, output, request };
+}
+
+function play(output, request, contentType, chunks) {
+  const meter = new StreamMeter({ contentType, onText: (text) => output.text(text) });
+  const headers = contentType ? { 'content-type': contentType } : {};
+  output.head({ status: 200, statusMessage: 'OK', headers, rawHeaders: [] }, meter);
+  chunks.forEach((chunk, i) => {
+    meter.push(chunk, i);
+    output.write(chunk);
+  });
+  meter.finish(chunks.length);
+  output.end(buildReport({ request, meter }), meter);
+}
+
+test('the live view prints text bodies and holds back binary ones', () => {
+  const json = liveOutput();
+  play(json.output, json.request, 'application/json', [Buffer.from('{"a":'), Buffer.from('1}\n')]);
+  assert.ok(visible(json.term.output).includes('{"a":1}'));
+
+  const binary = liveOutput();
+  play(binary.output, binary.request, 'image/png', [Buffer.from([0x89, 0x50, 0x4e, 0x47])]);
+  assert.ok(visible(binary.term.output).includes('! binary body not shown'));
+  assert.ok(!binary.term.output.includes('PNG'));
+
+  const sniffed = liveOutput();
+  play(sniffed.output, sniffed.request, undefined, [Buffer.from([0x00, 0x41, 0x42])]);
+  assert.ok(visible(sniffed.term.output).includes('! binary body not shown'));
+
+  const quiet = liveOutput({ quiet: true });
+  play(quiet.output, quiet.request, 'text/plain', [Buffer.from('secret body')]);
+  assert.ok(!quiet.term.output.includes('secret body'));
+});
+
+test('the live runs table ends as the summary', () => {
+  const term = new FakeTerminal();
+  const output = new LiveRunsOutput({ stdout: term, options: { color: false }, onInterrupt() {} });
+  const request = { method: 'GET', url: new URL('http://api.test/'), headers: [], body: null };
+  const run = (total) => ({ request: { method: 'GET', url: 'http://api.test/' }, response: { status: 200, reused: false }, timing: { dns: null, tcp: 1, tls: null, wait: total - 1, body: 0, total }, body: null, error: null });
+  output.beginRuns(request, 2);
+  output.progress([run(10)], 2);
+  term.emit('resize');
+  assert.match(visible(term.output), /run 2\/2 GET http:\/\/api\.test\/[\s\S]*total +1 +10\.0 ms/);
+  output.summary(aggregateRuns([run(10), run(20)], 2));
+  const text = visible(term.output);
+  assert.match(text, /2 runs GET http:\/\/api\.test\//);
+  assert.match(text, /total +2 +10\.0 ms/);
+});
+
+test('plain output keeps binary off a terminal but not off a pipe', () => {
+  const body = Buffer.from([0x00, 0x1b, 0x5b, 0x32, 0x4a]);
+  for (const isTTY of [true, false]) {
+    const stdout = new FakeTerminal();
+    stdout.isTTY = isTTY;
+    const stderr = new FakeTerminal();
+    stderr.columns = 0;
+    const output = new PlainOutput({ stdout, stderr, options: { color: false, quiet: false, include: false } });
+    output.write(body);
+    output.end({ request: { method: 'GET', url: 'http://x/' }, response: { status: 200, statusText: 'OK' }, timing: null, body: null, warnings: [], error: null });
+    assert.equal(stdout.output, isTTY ? '' : body.toString());
+    assert.equal(stderr.output.includes('binary body not shown'), isTTY);
+    // a terminal that reports 0 columns must not truncate the summary away
+    assert.match(stderr.output, /^200 OK GET http:\/\/x\//);
+  }
 });

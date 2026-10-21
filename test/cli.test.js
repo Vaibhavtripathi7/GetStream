@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { randomBytes } from 'node:crypto';
 import { listen, readAll, selfSignedCert } from './helpers/server.js';
 
@@ -186,4 +187,33 @@ test('first token counts from the start of the request, redirects included', asy
   assert.ok(report.timing.redirect >= 150);
   assert.ok(report.body.firstToken >= report.timing.redirect);
   assert.ok(report.body.firstToken <= report.timing.total);
+});
+
+test('a malformed body in the same packet as the headers is a protocol error', async (t) => {
+  const srv = net.createServer((socket) => socket.once('data', () => socket.end('HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nabcd\r\nZZ\r\n')));
+  await new Promise((resolve) => srv.listen(0, '127.0.0.1', resolve));
+  t.after(() => srv.close());
+  const { code, stderr } = await run([`127.0.0.1:${srv.address().port}/`]);
+  assert.equal(code, 2);
+  assert.match(stderr, /✗ protocol during body .* invalid HTTP response/);
+});
+
+test('a body cut short by the server says so', async (t) => {
+  const srv = await server(t, (req, res) => {
+    res.writeHead(200, { 'content-length': '100' });
+    res.write('only part');
+    setTimeout(() => res.socket.destroy(), 20);
+  });
+  const { code, stderr } = await run([srv.url('/').href]);
+  assert.equal(code, 2);
+  assert.match(stderr, /connection closed before the body was complete/);
+});
+
+test('--help and --version print and exit 0', async () => {
+  const help = await run(['--help']);
+  assert.equal(help.code, 0);
+  assert.match(help.stdout.toString(), /^Usage: req \[options\] <url>/);
+  const version = await run(['-V']);
+  assert.equal(version.code, 0);
+  assert.match(version.stdout.toString(), /^req \d+\.\d+\.\d+\n$/);
 });
