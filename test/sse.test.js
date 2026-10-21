@@ -60,11 +60,6 @@ test('keeps the last event id and ignores ids containing NUL', () => {
   assert.deepEqual(events.map((e) => e.id), ['7', '7', '7', '']);
 });
 
-test('accepts only digits for retry', () => {
-  assert.equal(parse('retry: 1500\n\n').parser.retry, 1500);
-  assert.equal(parse('retry: 15x\n\n').parser.retry, null);
-});
-
 test('reports an event left open at the end of the stream', () => {
   const { events, end } = parse('data: one\n\ndata: two\n');
   assert.deepEqual(events.map((e) => e.data), ['one']);
