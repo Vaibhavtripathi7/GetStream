@@ -1,0 +1,90 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+    "cores": 8,
+    "memoryGB": 6,
+    "node": "v24.12.0",
+    "os": "Linux 6.18.57-2-lts",
+    "date": "2026-10-21T21:48:32.675Z"
+  },
+  "method": "30 runs after 3 warm-up runs; wall is spawn to exit; ttfb is connect + wait for req and time_starttransfer for curl",
+  "wall": {
+    "nodeStartup": {
+      "count": 30,
+      "min": 25.512,
+      "mean": 29.292,
+      "p50": 29.047,
+      "p90": 31.232,
+      "p95": 32.118,
+      "p99": 33.163,
+      "max": 33.318
+    },
+    "req": {
+      "count": 30,
+      "min": 80.846,
+      "mean": 90.939,
+      "p50": 89.719,
+      "p90": 98.481,
+      "p95": 100.579,
+      "p99": 104.172,
+      "max": 105.268
+    },
+    "curl": {
+      "count": 30,
+      "min": 10.391,
+      "mean": 13.05,
+      "p50": 12.754,
+      "p90": 14.954,
+      "p95": 15.526,
+      "p99": 16.31,
+      "max": 16.553
+    }
+  },
+  "ttfb": {
+    "serverDelayMs": 100,
+    "req": {
+      "connect": {
+        "count": 30,
+        "min": 0.895,
+        "mean": 1.052,
+        "p50": 0.985,
+        "p90": 1.229,
+        "p95": 1.299,
+        "p99": 1.585,
+        "max": 1.689
+      },
+      "ttfb": {
+        "count": 30,
+        "min": 100.766,
+        "mean": 101.806,
+        "p50": 101.825,
+        "p90": 102.147,
+        "p95": 102.245,
+        "p99": 102.497,
+        "max": 102.577
+      }
+    },
+    "curl": {
+      "connect": {
+        "count": 30,
+        "min": 0.16,
+        "mean": 0.178,
+        "p50": 0.177,
+        "p90": 0.194,
+        "p95": 0.205,
+        "p99": 0.208,
+        "max": 0.209
+      },
+      "ttfb": {
+        "count": 30,
+        "min": 99.958,
+        "mean": 100.925,
+        "p50": 100.95,
+        "p90": 101.102,
+        "p95": 101.229,
+        "p99": 101.409,
+        "max": 101.448
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+    "cores": 8,
+    "memoryGB": 6,
+    "node": "v24.12.0",
+    "os": "Linux 6.18.57-2-lts",
+    "date": "2026-10-21T21:49:28.358Z"
+  },
+  "method": "40 alternating runs each, medians; curl --http1.1",
+  "url": "https://example.com/",
+  "medians": [
+    {
+      "phase": "dns",
+      "req": 12.73,
+      "curl": 10.74
+    },
+    {
+      "phase": "tcp",
+      "req": 6.31,
+      "curl": 4.55
+    },
+    {
+      "phase": "tls",
+      "req": 15.48,
+      "curl": 13.87
+    },
+    {
+      "phase": "wait",
+      "req": 11.96,
+      "curl": 11.22
+    },
+    {
+      "phase": "total",
+      "req": 50.31,
+      "curl": 44.2
+    }
+  ]
+}

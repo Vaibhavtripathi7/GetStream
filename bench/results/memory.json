@@ -1,0 +1,49 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+    "cores": 8,
+    "memoryGB": 6,
+    "node": "v24.12.0",
+    "os": "Linux 6.18.57-2-lts",
+    "date": "2026-10-21T21:48:46.216Z"
+  },
+  "method": "peak RSS via getrusage in the req process; body written to /dev/null; MB/s for req is size over spawn-to-exit time, so it includes startup",
+  "bodies": [
+    {
+      "sizeMB": 10,
+      "reqPeakRssMB": 84.3,
+      "reqMBps": 74.5,
+      "curlMBps": 649.4
+    },
+    {
+      "sizeMB": 100,
+      "reqPeakRssMB": 150.5,
+      "reqMBps": 347.3,
+      "curlMBps": 1571.4
+    },
+    {
+      "sizeMB": 1000,
+      "reqPeakRssMB": 152.8,
+      "reqMBps": 955.9,
+      "curlMBps": 1802.3
+    }
+  ],
+  "streams": [
+    {
+      "events": 10000,
+      "maxRssMB": 75.3,
+      "wallMs": 357.9
+    },
+    {
+      "events": 100000,
+      "maxRssMB": 88.1,
+      "wallMs": 2270.8
+    },
+    {
+      "events": 400000,
+      "maxRssMB": 122.9,
+      "wallMs": 8627.8
+    }
+  ],
+  "bytesPerEvent": 128
+}

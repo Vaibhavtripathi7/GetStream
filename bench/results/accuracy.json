@@ -1,0 +1,85 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+    "cores": 8,
+    "memoryGB": 6,
+    "node": "v24.12.0",
+    "os": "Linux 6.18.57-2-lts",
+    "date": "2026-10-21T21:48:19.087Z"
+  },
+  "method": "per-gap difference between req --timeline arrivals and mock-server send times",
+  "results": [
+    {
+      "gap": 20,
+      "events": 200,
+      "runs": 5,
+      "gapsCompared": 995,
+      "absErrorMs": {
+        "count": 995,
+        "min": 0.0001,
+        "mean": 0.1004,
+        "p50": 0.0588,
+        "p90": 0.1871,
+        "p95": 0.2372,
+        "p99": 0.572,
+        "max": 3.5593
+      },
+      "meanErrorMs": -0.01179,
+      "firstTokenMatched": "5/5"
+    },
+    {
+      "gap": 5,
+      "events": 500,
+      "runs": 5,
+      "gapsCompared": 2495,
+      "absErrorMs": {
+        "count": 2495,
+        "min": 0,
+        "mean": 0.064,
+        "p50": 0.0347,
+        "p90": 0.1354,
+        "p95": 0.1887,
+        "p99": 0.3588,
+        "max": 2.67
+      },
+      "meanErrorMs": -0.00426,
+      "firstTokenMatched": "5/5"
+    },
+    {
+      "gap": 1,
+      "events": 1000,
+      "runs": 5,
+      "gapsCompared": 4995,
+      "absErrorMs": {
+        "count": 4995,
+        "min": 0,
+        "mean": 0.0227,
+        "p50": 0.005,
+        "p90": 0.0536,
+        "p95": 0.081,
+        "p99": 0.18,
+        "max": 1.5083
+      },
+      "meanErrorMs": -0.00261,
+      "firstTokenMatched": "5/5"
+    },
+    {
+      "gap": 0,
+      "events": 2000,
+      "runs": 5,
+      "gapsCompared": 9995,
+      "absErrorMs": {
+        "count": 9995,
+        "min": 0,
+        "mean": 0.0172,
+        "p50": 0.0129,
+        "p90": 0.0303,
+        "p95": 0.0378,
+        "p99": 0.1169,
+        "max": 3.2753
+      },
+      "meanErrorMs": -0.00128,
+      "firstTokenMatched": "5/5"
+    }
+  ]
+}

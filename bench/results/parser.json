@@ -1,0 +1,31 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+    "cores": 8,
+    "memoryGB": 6,
+    "node": "v24.12.0",
+    "os": "Linux 6.18.57-2-lts",
+    "date": "2026-10-21T21:47:37.307Z"
+  },
+  "method": "median of 7 passes over 50 MB in 16 KB chunks, in one process",
+  "results": [
+    {
+      "name": "SSE parser only",
+      "mbPerSecond": 382.5,
+      "eventsPerSecond": 2511962,
+      "medianMs": 130.7
+    },
+    {
+      "name": "SSE + JSON + LLM metrics",
+      "mbPerSecond": 74.8,
+      "eventsPerSecond": 491058,
+      "medianMs": 668.7
+    },
+    {
+      "name": "NDJSON + JSON + LLM metrics",
+      "mbPerSecond": 97.2,
+      "eventsPerSecond": 823551,
+      "medianMs": 514.5
+    }
+  ]
+}
