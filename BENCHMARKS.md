@@ -6,7 +6,11 @@ comparison needs internet access).
 
 Machine: AMD Ryzen 5 3500U (4 cores, 8 threads), 6 GB RAM, Linux 6.18,
 Node v24.12.0, curl 8.23.0. A laptop, not a quiet benchmark box, so the tails
-include noise from everything else running on it.
+include noise from everything else running on it. The tables are one run on
+the code at `750d5f3` while the machine was otherwise idle; later commits do
+not touch the timing path. A run with the machine under load moved every
+absolute number, `node -e ''` and curl included, but not the comparisons
+between req and curl.
 
 ## 1. Timing accuracy
 
