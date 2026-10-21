@@ -1,4 +1,11 @@
-payload.json
 node_modules/
-ui/node_modules/
-ui/dist/
+payload.json
+
+# secrets
+.env
+.env.*
+*.pem
+*.key
+
+*.log
+.DS_Store

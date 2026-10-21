@@ -1,16 +1,33 @@
 {
   "name": "postman-cli",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Terminal HTTP client that times every phase of a request and measures streaming responses",
+  "type": "module",
   "bin": {
-    "req": "/bin/cli.js"
+    "req": "bin/cli.js"
   },
+  "files": [
+    "bin",
+    "lib"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test \"test/*.test.js\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "http",
+    "cli",
+    "sse",
+    "streaming",
+    "latency",
+    "llm"
+  ],
+  "author": "Vaibhav Tripathi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vaibhavtripathi7/GetStream.git"
+  }
 }

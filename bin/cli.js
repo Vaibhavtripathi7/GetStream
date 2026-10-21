@@ -1,78 +1,43 @@
 #!/usr/bin/env node
-const fs  = require('node:fs')
-const { parseArgs } = require('node:util');
-const { executeRequest } = require('../lib/index.js')
+import { readFileSync } from 'node:fs';
+import { parseArgs } from 'node:util';
+import { pipeline } from 'node:stream/promises';
+import { send, phaseDurations, bodyError } from '../lib/http.js';
 
-const options = {
-    url : {type: 'string', short: 'u'},
-    method: { type: 'string', short: 'm', default: 'GET'},
-    body: { type: 'string', short: 'b'},
-    header: { type: 'string', short: 'H', multiple: true},
-    file: {type: 'string', short: 'f'},
-    timeout: {type: 'string', short: 't', default: '5000'},
-    ui: {type: 'boolean', short: 'U'}
-};
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: {
+    method: { type: 'string', short: 'X' },
+    header: { type: 'string', short: 'H', multiple: true, default: [] },
+    data: { type: 'string', short: 'd' },
+    timeout: { type: 'string', short: 't', default: '60000' },
+  },
+});
 
-function parseHeaders(headerArray) {
-    if(!headerArray) { return undefined};
-
-    const headerObj = {};
-    for (const h of headerArray){
-        const splitIndex = h.indexOf(':');
-        if (splitIndex == -1 ){ continue}
-        const key = h.slice(0, splitIndex).trim();
-        const value = h.slice(splitIndex + 1).trim();
-        headerObj[key] = value;
-    }
-    return headerObj;
+const target = positionals[0];
+if (!target) {
+  console.error('usage: req [-X method] [-H "name: value"] [-d body|@file] <url>');
+  process.exit(1);
 }
 
+const headers = values.header.map((h) => {
+  const i = h.indexOf(':');
+  return [h.slice(0, i).trim(), h.slice(i + 1).trim()];
+});
+const body = values.data?.startsWith('@') ? readFileSync(values.data.slice(1)) : values.data;
 
-async function main() {
-    const {values} = parseArgs({options})
-
-    if (values.ui) {
-        const { startUIServer } = require('../lib/server.js');
-        startUIServer();
-        return;
-    }
-    try {
-        if (!values.url) {
-            console.error('\x1b[31mError:\x1b[0m URL is required. Use -u <url>');
-            process.exit(1);
-        }
-
-        let finalbody = values.body;
-        if(values.file) {
-            finalbody = fs.readFileSync(values.file, 'utf8');
-
-        }
-        const config = {
-            url: values.url,
-            method: values.method,
-            body: finalbody,
-            headers: parseHeaders(values.header),
-            timeout: parseInt(values.timeout)
-    }
-        const response = await executeRequest(config);
-        console.error(`\x1b[32mStatus: ${response.status}\x1b[0m \x1b[90m(${response.time}ms)\x1b[0m`);        
-        if(!response.body){
-            process.exit(0);
-        }
-        for await (const chunk of response.body){
-            process.stdout.write(chunk);
-        }
-        console.log();
-
-    }catch(error){
-        if(error.name === 'TimeoutError' || error.name === 'AbortError'){
-            console.error(`\x1b[31mError:\x1b[0m Request timed out after ${values.timeout}ms.`)
-        }else {
-            console.error(`\x1b[31mError:\x1b[0m ${error.message}`)
-        }
-        console.error(`${error.message}`);
-        process.exit(1);
-    }
+try {
+  const ex = await send(
+    { url: new URL(target), method: values.method ?? (body ? 'POST' : 'GET'), headers, body },
+    { idleTimeout: Number(values.timeout) },
+  );
+  await pipeline(ex.body, process.stdout, { end: false }).catch((err) => {
+    throw bodyError(err, ex.timing);
+  });
+  const d = phaseDurations(ex.timing);
+  const ms = (v) => (v === null ? '-' : `${v.toFixed(1)}ms`);
+  console.error(`${ex.status} dns ${ms(d.dns)} tcp ${ms(d.tcp)} tls ${ms(d.tls)} wait ${ms(d.wait)} body ${ms(d.body)} total ${ms(d.total)}`);
+} catch (err) {
+  console.error(`error (${err.phase ?? 'request'}): ${err.message}`);
+  process.exit(err.kind === 'timeout' ? 3 : 2);
 }
-
-main();
