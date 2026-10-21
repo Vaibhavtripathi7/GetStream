@@ -170,3 +170,20 @@ test('--keep-alive survives a redirect from http to https', async (t) => {
   assert.deepEqual(summary.statuses, { 200: 3 });
   assert.equal(summary.timing.tls.count, 1);
 });
+
+test('first token counts from the start of the request, redirects included', async (t) => {
+  const srv = await server(t, (req, res) => {
+    if (req.url === '/start') {
+      return setTimeout(() => {
+        res.writeHead(302, { location: '/stream' });
+        res.end();
+      }, 150);
+    }
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end('data: {"choices":[{"delta":{"content":"hi"}}]}\n\ndata: [DONE]\n\n');
+  });
+  const report = JSON.parse((await run([srv.url('/start').href, '-L', '--json'])).stdout);
+  assert.ok(report.timing.redirect >= 150);
+  assert.ok(report.body.firstToken >= report.timing.redirect);
+  assert.ok(report.body.firstToken <= report.timing.total);
+});
