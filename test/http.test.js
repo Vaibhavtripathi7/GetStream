@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
 import { send, sendFollowing, redirectRequest, bodyError, phaseDurations, headerObject, RequestError } from '../lib/http.js';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { listen, readAll, selfSignedCert } from './helpers/server.js';
 
 test('marks phases in order for a hostname', async (t) => {
@@ -58,7 +59,7 @@ test('keeps duplicate headers and their spelling', async (t) => {
   const ex = await send({ url: srv.url('/'), headers });
   const raw = JSON.parse(await readAll(ex.body));
   assert.deepEqual(raw.slice(0, 6), ['X-Tag', 'a', 'X-Tag', 'b', 'Accept', 'text/plain']);
-  assert.deepEqual(headerObject(headers), { 'X-Tag': ['a', 'b'], Accept: 'text/plain' });
+  assert.deepEqual({ ...headerObject(headers) }, { 'X-Tag': ['a', 'b'], Accept: 'text/plain' });
 });
 
 test('sends a body with content-length', async (t) => {
@@ -317,4 +318,46 @@ test('an empty compressed reply is fine', async (t) => {
   t.after(srv.close);
   const ex = await send({ url: srv.url('/') });
   assert.equal((await readAll(ex.body)).length, 0);
+});
+
+test('a request Node refuses to build fails at once and leaves no timer behind', async () => {
+  const started = performance.now();
+  await assert.rejects(
+    send({ url: new URL('http://127.0.0.1:9/'), headers: [['X-A', '€']] }, { connectTimeout: 50, maxTime: 60 }),
+    (err) => err.kind === 'invalid' && /cannot send this request/.test(err.message),
+  );
+  assert.ok(performance.now() - started < 50);
+  // a leaked timer would fire here and throw inside the test process
+  await sleep(100);
+});
+
+test('a header named like an Object property is sent as a header', async (t) => {
+  const srv = await listen((req, res) => res.end(JSON.stringify(req.rawHeaders)));
+  t.after(srv.close);
+  const ex = await send({ url: srv.url('/'), headers: [['__proto__', 'x'], ['constructor', 'y']] });
+  const raw = JSON.parse(await readAll(ex.body));
+  assert.deepEqual(raw.slice(0, 4), ['__proto__', 'x', 'constructor', 'y']);
+});
+
+test('a failure after a redirect keeps the time of the earlier hops', async (t) => {
+  const srv = await listen((req, res) => {
+    if (req.url === '/hang') return;
+    setTimeout(() => {
+      res.writeHead(302, { location: req.url === '/loop' ? '/loop' : '/hang' });
+      res.end();
+    }, 20);
+  });
+  t.after(srv.close);
+
+  await assert.rejects(sendFollowing({ url: srv.url('/start') }, { maxRedirects: 5, idleTimeout: 80 }), (err) => {
+    assert.equal(err.kind, 'timeout');
+    assert.ok(err.timing.redirect >= 20);
+    assert.ok(phaseDurations(err.timing).total >= err.timing.redirect + 80);
+    return true;
+  });
+  await assert.rejects(sendFollowing({ url: srv.url('/loop') }, { maxRedirects: 2 }), (err) => {
+    assert.match(err.message, /stopped after 2 redirects/);
+    assert.ok(phaseDurations(err.timing).total >= 40);
+    return true;
+  });
 });

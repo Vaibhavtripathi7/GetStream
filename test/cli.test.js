@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { listen, readAll } from './helpers/server.js';
+import { listen, readAll, selfSignedCert } from './helpers/server.js';
 
 const CLI = new URL('../bin/cli.js', import.meta.url).pathname;
 
@@ -130,4 +130,43 @@ test('-L follows redirects and reports the hops', async (t) => {
   assert.deepEqual(report.response.redirects.map((r) => r.status), [307]);
   assert.match(report.response.redirects[0].url, /token=REDACTED/);
   assert.ok(report.timing.redirect > 0);
+});
+
+test('--json hides Set-Cookie and keeps oddly named request headers', async (t) => {
+  const srv = await server(t, (req, res) => {
+    res.setHeader('Set-Cookie', ['session=abc123; HttpOnly', 'theme=dark']);
+    res.end();
+  });
+  const { stdout } = await run([srv.url('/').href, '--json', '-H', 'constructor: x', '-H', 'toString: y']);
+  const report = JSON.parse(stdout);
+  assert.deepEqual(report.response.headers['set-cookie'], ['REDACTED', 'REDACTED']);
+  assert.equal(report.request.headers.constructor, 'x');
+  assert.equal(report.request.headers.toString, 'y');
+  assert.ok(!stdout.includes('abc123'));
+});
+
+test('a header value that cannot be sent is a usage error', async (t) => {
+  const srv = await server(t, (req, res) => res.end());
+  const { code, stderr } = await run([srv.url('/').href, '-H', 'X-A: €']);
+  assert.equal(code, 1);
+  assert.match(stderr, /characters a header cannot carry/);
+});
+
+test('--keep-alive survives a redirect from http to https', async (t) => {
+  const tls = selfSignedCert();
+  if (!tls) {
+    t.skip('openssl not available');
+    return;
+  }
+  const secure = await listen((req, res) => res.end('secure'), { tls });
+  t.after(secure.close);
+  const plain = await server(t, (req, res) => {
+    res.writeHead(301, { location: secure.url('/').href });
+    res.end();
+  });
+  const { code, stdout } = await run([plain.url('/').href, '-L', '-k', '-n', '3', '--keep-alive', '--json']);
+  assert.equal(code, 0);
+  const summary = JSON.parse(stdout);
+  assert.deepEqual(summary.statuses, { 200: 3 });
+  assert.equal(summary.timing.tls.count, 1);
 });

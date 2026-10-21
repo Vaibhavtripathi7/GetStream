@@ -6,6 +6,9 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LiveView } from '../lib/term/live.js';
+import { LiveOutput } from '../lib/output.js';
+import { StreamMeter } from '../lib/stream.js';
+import { buildReport } from '../lib/report.js';
 import { stringWidth } from '../lib/term/text.js';
 import { listen } from './helpers/server.js';
 
@@ -137,4 +140,27 @@ test('end to end in a pseudo terminal: live panel, then the summary, then Ctrl-C
   const interrupted = readFileSync(join(dir, 'int'), 'utf8');
   assert.match(visible(interrupted), /✗ aborted during wait/);
   assert.ok(interrupted.lastIndexOf('\x1b[?25h') > interrupted.lastIndexOf('\x1b[?25l'));
+});
+
+test('the live view shows generated text even when the stream opens with a textless event', () => {
+  const term = new FakeTerminal();
+  const options = { color: false, quiet: false, raw: false, include: false };
+  const output = new LiveOutput({ stdout: term, options, onInterrupt() {} });
+  const request = { method: 'POST', url: new URL('http://api.test/v1/messages'), headers: [], body: null };
+  output.begin(request);
+  const meter = new StreamMeter({ contentType: 'text/event-stream', onText: (text) => output.text(text) });
+  output.head({ status: 200, statusMessage: 'OK', headers: { 'content-type': 'text/event-stream' }, rawHeaders: [] }, meter);
+  const events = [
+    'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":3,"output_tokens":1}}}\n\n',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}\n\n',
+  ];
+  events.forEach((e, i) => {
+    const chunk = Buffer.from(e);
+    meter.push(chunk, i);
+    output.write(chunk);
+  });
+  meter.finish(2);
+  output.end(buildReport({ request, meter }), meter);
+  assert.ok(visible(term.output).includes('Hello'));
+  assert.ok(!term.output.includes('message_start'));
 });

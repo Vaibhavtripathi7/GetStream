@@ -42,6 +42,9 @@ test('formats durations and sizes', () => {
   assert.equal(formatMs(456.7), '457 ms');
   assert.equal(formatMs(1234), '1.23 s');
   assert.equal(formatMs(125_000), '2m 5s');
+  assert.equal(formatMs(119_600), '2m 0s');
+  assert.equal(formatMs(59_994), '59.99 s');
+  assert.equal(formatMs(59_996), '1m 0s');
   assert.equal(formatMs(null), '-');
   assert.equal(formatBytes(999), '999 B');
   assert.equal(formatBytes(1500), '1.5 kB');

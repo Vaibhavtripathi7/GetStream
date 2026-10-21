@@ -5,7 +5,7 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseCli, parseUrl, parseHeader, duration, loadBody, defaultHeaders, UsageError } from '../lib/args.js';
-import { redactHeader, redactUrl } from '../lib/redact.js';
+import { redactHeader, redactHeaderRecord, redactUrl } from '../lib/redact.js';
 
 const usage = (fn, pattern) => assert.throws(fn, (err) => err instanceof UsageError && pattern.test(err.message));
 
@@ -27,6 +27,7 @@ test('accepts URLs the way curl and HTTPie do', () => {
   assert.equal(parseUrl(':3000/health').href, 'http://localhost:3000/health');
   assert.equal(parseUrl('https://[::1]:8443/').hostname, '[::1]');
   usage(() => parseUrl('ftp://example.com'), /unsupported scheme "ftp"/);
+  usage(() => parseUrl('http://us%zzer:pw@example.com/'), /invalid % escape/);
   usage(() => parseUrl('http://exa mple.com/?key=secret'), /^invalid URL "http:\/\/exa mple.com\/"$/);
 });
 
@@ -36,6 +37,8 @@ test('parses headers and never echoes a malformed one', () => {
   assert.throws(() => parseHeader('Authorization Bearer sk-live-123'), (err) => !err.message.includes('sk-live'));
   usage(() => parseHeader('Bad Name: x'), /invalid header name/);
   usage(() => parseHeader('X-A: one\r\nX-B: two'), /line break/);
+  usage(() => parseHeader('X-Price: 5 €'), /characters a header cannot carry/);
+  assert.deepEqual(parseHeader('X-Latin: café'), ['X-Latin', 'café']);
 });
 
 test('reads durations in ms or seconds', () => {
@@ -73,7 +76,9 @@ test('redacts credentials in headers and URLs', () => {
   assert.equal(redactHeader('Content-Type', 'application/json'), 'application/json');
   assert.equal(
     redactUrl(new URL('https://user:pw@api.example.com/v1?key=abc&alt=sse&access_token=t')),
-    'https://user:REDACTED@api.example.com/v1?key=REDACTED&alt=sse&access_token=REDACTED',
+    'https://REDACTED:REDACTED@api.example.com/v1?key=REDACTED&alt=sse&access_token=REDACTED',
   );
+  assert.equal(redactUrl(new URL('https://ghp_secret@api.github.com/user')), 'https://REDACTED@api.github.com/user');
+  assert.deepEqual({ ...redactHeaderRecord({ 'set-cookie': ['sid=1', 'b=2'], etag: 'x' }) }, { 'set-cookie': ['REDACTED', 'REDACTED'], etag: 'x' });
   assert.equal(redactUrl(new URL('https://example.com/a?q=1')), 'https://example.com/a?q=1');
 });

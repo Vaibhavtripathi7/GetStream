@@ -47,7 +47,7 @@ Exit status: 0 ok, 1 usage, 2 network or TLS error, 3 timeout,
 4 HTTP error with --fail, 130 interrupted.
 `;
 
-const ERROR_EXIT = { timeout: 3, aborted: 130 };
+const ERROR_EXIT = { invalid: 1, timeout: 3, aborted: 130 };
 
 export function exitCode(report, options) {
   if (report.error) return ERROR_EXIT[report.error.kind] ?? 2;
@@ -58,6 +58,7 @@ export function exitCode(report, options) {
 function runsExitCode(summary, options) {
   if (summary.aborted) return 130;
   const kinds = Object.keys(summary.failed);
+  if (kinds.includes('invalid')) return 1;
   if (kinds.length > 0) return kinds.every((k) => k === 'timeout') ? 3 : 2;
   if (options.fail && Object.keys(summary.statuses).some((s) => Number(s) >= 400)) return 4;
   return 0;
