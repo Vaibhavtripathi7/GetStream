@@ -82,3 +82,8 @@ test('redacts credentials in headers and URLs', () => {
   assert.deepEqual({ ...redactHeaderRecord({ 'set-cookie': ['sid=1', 'b=2'], etag: 'x' }) }, { 'set-cookie': ['REDACTED', 'REDACTED'], etag: 'x' });
   assert.equal(redactUrl(new URL('https://example.com/a?q=1')), 'https://example.com/a?q=1');
 });
+
+test('redacts tokens in a URL fragment and leaves plain anchors alone', () => {
+  assert.equal(redactUrl(new URL('https://app.test/cb#access_token=abc&state=xyz')), 'https://app.test/cb#access_token=REDACTED&state=xyz');
+  assert.equal(redactUrl(new URL('https://docs.test/page#section-2')), 'https://docs.test/page#section-2');
+});

@@ -161,15 +161,17 @@ error with `--fail`, 130 interrupted.
 ## Safety
 
 - Authorization, Cookie, API-key headers, key-like query parameters
-  (`key`, `token`, `access_token`, `signature`, ...) and a user name or
-  password in the URL are shown as `REDACTED` in the summary and in
-  `--json`, and so is Set-Cookie in the JSON report. A malformed `-H` is
+  (`key`, `token`, `access_token`, `signature`, ...), the same parameters in
+  a URL fragment, and a user name or password in the URL are shown as
+  `REDACTED` in the summary and in `--json`, and so is Set-Cookie in the
+  JSON report. A malformed `-H` is
   rejected without echoing its value. `-i` prints the response headers as
   the server sent them.
 - A redirect to another origin drops Authorization, Cookie and Host.
-- In the live view, text from the server is shown with control characters
-  made visible, so a response cannot move the cursor, clear the screen or
-  retitle the terminal. Piped output is passed through untouched.
+- On a terminal, everything that comes from the server (the body, status
+  text, error messages) is shown with control characters made visible, so
+  a response cannot move the cursor, clear the screen or retitle the
+  terminal. Piped or redirected output is passed through untouched.
 - The terminal is restored after Ctrl-C, SIGTERM or a crash.
 
 ## How accurate is it

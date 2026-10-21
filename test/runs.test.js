@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { aggregateRuns, buildReport } from '../lib/report.js';
+import { runOnce } from '../lib/run.js';
 import { renderRuns } from '../lib/term/panel.js';
 import { createStyle } from '../lib/term/style.js';
 import { listen } from './helpers/server.js';
@@ -104,4 +105,20 @@ test('warns when the first address failed and another was used', () => {
   };
   const report = buildReport({ request: { method: 'GET', url: exchange.url, headers: [], body: null }, exchange });
   assert.deepEqual(report.warnings, ['::1 failed with ECONNREFUSED after 0.5 ms, used 127.0.0.1']);
+});
+
+test('a bug inside the tool is thrown, not reported as a network error', async () => {
+  const srv = await listen((req, res) => res.end('ok'));
+  try {
+    const output = { head() { throw new TypeError('bug'); }, write: () => true, end() {} };
+    const options = { connectTimeout: 1000, idleTimeout: 1000, maxTime: 0, insecure: false, location: false, timeline: false };
+    await assert.rejects(runOnce({ url: srv.url('/'), method: 'GET', headers: [], body: null }, options, output), TypeError);
+  } finally {
+    await srv.close();
+  }
+});
+
+test('the live aggregate leaves out the per-run samples', () => {
+  assert.equal(aggregateRuns([report(10)], 1, { samples: false }).samples, undefined);
+  assert.equal(aggregateRuns([report(10)], 1).samples.length, 1);
 });

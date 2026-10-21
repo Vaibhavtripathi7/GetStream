@@ -282,3 +282,30 @@ test('plain output keeps binary off a terminal but not off a pipe', () => {
     assert.match(stderr.output, /^200 OK GET http:\/\/x\//);
   }
 });
+
+test('the live panel counts a redirect from the start of the request', async () => {
+  const { term, output } = liveOutput();
+  term.columns = 100;
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  // the second hop of a redirect: began 20 ms in, DNS done at 25 ms
+  output.mark({ start: 20, dns: 25, connect: null, tls: null, firstByte: null, end: null, failed: null }, 'connect');
+  term.output = '';
+  term.emit('resize');
+  const frame = visible(term.output);
+  assert.match(frame, /connecting GET/);
+  assert.match(frame, /redirect 20\.0 ms {2}dns 5\.0 ms {2}tcp [\d.]+ ms…/);
+  output.end(buildReport({ request: { method: 'GET', url: new URL('http://api.test/'), headers: [], body: null } }), null);
+});
+
+test('plain output shows control characters on a terminal and passes them through a pipe', () => {
+  const body = Buffer.from('ok \x1b[2J done\n');
+  for (const isTTY of [true, false]) {
+    const stdout = new FakeTerminal();
+    stdout.isTTY = isTTY;
+    const stderr = new FakeTerminal();
+    const output = new PlainOutput({ stdout, stderr, options: { color: false, quiet: false, include: false } });
+    output.write(body);
+    output.end({ request: { method: 'GET', url: 'http://x/' }, response: { status: 200, statusText: 'OK' }, timing: null, body: null, warnings: [], error: null });
+    assert.equal(stdout.output, isTTY ? 'ok ␛[2J done\n' : body.toString());
+  }
+});

@@ -194,8 +194,10 @@ test('follows redirects and counts the earlier hops in the total', async (t) => 
   const ex = await sendFollowing({ url: srv.url('/old') }, { maxRedirects: 10 });
   assert.equal((await readAll(ex.body)).toString(), 'GET /new?x=1');
   assert.deepEqual(ex.redirects.map((r) => r.status), [301, 302]);
-  assert.ok(ex.timing.redirect >= 30);
-  assert.ok(phaseDurations(ex.timing).total >= ex.timing.redirect + ex.timing.end);
+  assert.ok(ex.timing.start >= 30);
+  assert.equal(phaseDurations(ex.timing).redirect, ex.timing.start);
+  assert.equal(phaseDurations(ex.timing).total, ex.timing.end);
+  assert.ok(ex.timing.firstByte > ex.timing.start);
 
   const stay = await sendFollowing({ url: srv.url('/old') });
   assert.equal(stay.status, 301);
@@ -351,8 +353,8 @@ test('a failure after a redirect keeps the time of the earlier hops', async (t) 
 
   await assert.rejects(sendFollowing({ url: srv.url('/start') }, { maxRedirects: 5, idleTimeout: 80 }), (err) => {
     assert.equal(err.kind, 'timeout');
-    assert.ok(err.timing.redirect >= 20);
-    assert.ok(phaseDurations(err.timing).total >= err.timing.redirect + 80);
+    assert.ok(err.timing.start >= 20);
+    assert.ok(phaseDurations(err.timing).total >= err.timing.start + 80);
     return true;
   });
   await assert.rejects(sendFollowing({ url: srv.url('/loop') }, { maxRedirects: 2 }), (err) => {
@@ -391,9 +393,59 @@ test('passes an unknown encoding through and decodes zstd where Node can', async
   t.after(srv.close);
   const unknown = await send({ url: srv.url('/') });
   assert.equal((await readAll(unknown.body)).toString(), 'as sent');
-  assert.equal(unknown.encoding, null);
+  assert.equal(unknown.encoding, 'compress');
+  assert.equal(unknown.undecoded, true);
   if (zlib.zstdCompressSync) {
     const zstd = await send({ url: srv.url('/zstd') });
     assert.equal((await readAll(zstd.body)).toString(), 'zstd body');
   }
+});
+
+test('decodes raw deflate and stacked codings', async (t) => {
+  const text = 'stream body '.repeat(200);
+  const bodies = {
+    '/raw-deflate': ['deflate', zlib.deflateRawSync(text)],
+    '/gzip-identity': ['gzip, identity', zlib.gzipSync(text)],
+    '/gzip-twice': ['gzip, gzip', zlib.gzipSync(zlib.gzipSync(text))],
+    '/deflate-then-br': ['deflate, br', zlib.brotliCompressSync(zlib.deflateSync(text))],
+  };
+  const srv = await listen((req, res) => {
+    const [encoding, body] = bodies[req.url];
+    res.writeHead(200, { 'content-encoding': encoding });
+    res.end(body);
+  });
+  t.after(srv.close);
+  for (const [path, [encoding]] of Object.entries(bodies)) {
+    const ex = await send({ url: srv.url(path) });
+    assert.equal((await readAll(ex.body)).toString(), text, path);
+    assert.equal(ex.encoding, encoding.replace(', identity', ''), path);
+    assert.equal(ex.undecoded, false, path);
+  }
+});
+
+test('leaves a body alone when one of its codings is unknown', async (t) => {
+  const srv = await listen((req, res) => {
+    res.writeHead(200, { 'content-encoding': 'gzip, compress' });
+    res.end('opaque');
+  });
+  t.after(srv.close);
+  const ex = await send({ url: srv.url('/') });
+  assert.equal((await readAll(ex.body)).toString(), 'opaque');
+  assert.equal(ex.undecoded, true);
+});
+
+test('abort still reaches a compressed body after the raw response ended', { timeout: 10_000 }, async (t) => {
+  const srv = await listen((req, res) => {
+    res.writeHead(200, { 'content-encoding': 'gzip' });
+    res.end(zlib.gzipSync(Buffer.alloc(64 * 1024 * 1024)));
+  });
+  t.after(srv.close);
+  const controller = new AbortController();
+  const ex = await send({ url: srv.url('/') }, { signal: controller.signal });
+  const failure = new Promise((resolve) => ex.body.once('error', resolve));
+  ex.body.once('data', () => ex.body.pause());
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.ok(ex.timing.end !== null, 'the compressed bytes have all arrived');
+  controller.abort();
+  assert.equal((await failure).kind, 'aborted');
 });

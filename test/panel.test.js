@@ -134,3 +134,17 @@ test('the live run counter never passes the planned count', () => {
   const [head] = renderRuns(summary, { style: createStyle(false), live: { frame: 0, elapsed: 5 } });
   assert.match(head, /run 3\/3/);
 });
+
+test('text from the server is made printable and kept on one line', () => {
+  const hostile = {
+    ...report,
+    response: { status: 500, statusText: 'Oops\x1b]0;pwned\x07', reused: false },
+    warnings: ['stream error: \x1b[2Jcleared\nsecond line'],
+  };
+  const text = renderPanel(hostile, { style: createStyle(true) }).join('\n');
+  assert.ok(!/\x1b[\]\[](0;|2J)/.test(text));
+  assert.match(text, /Oops␛\]0;pwned␇/);
+  assert.match(text, /! stream error: ␛\[2Jcleared second line/);
+  const failed = renderPanel({ ...report, error: { kind: 'tls', phase: 'tls', message: 'bad \x1b[31mcert' } }, { style: createStyle(false) })[0];
+  assert.match(failed, /bad ␛\[31mcert/);
+});
