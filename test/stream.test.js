@@ -171,3 +171,43 @@ test('records provider errors from anthropic and the responses api', () => {
   const responses = meter('text/event-stream', ['data: {"type":"response.failed","response":{"error":{"message":"quota"}}}\n\n']);
   assert.deepEqual(responses.stats.errors, ['quota']);
 });
+
+test('a real Gemini stream: answer and thinking tokens apart, rate over what was streamed', () => {
+  // gemini-3.7-flash, captured 2026-10-22; only the opaque thoughtSignature is shortened
+  const raw = readFileSync(new URL('fixtures/gemini-live.sse', import.meta.url), 'utf8');
+  const events = raw.split(/(?<=\r\n\r\n)/);
+  const { stats, text } = meter('text/event-stream', events);
+  let expected = '';
+  for (const e of events) for (const p of JSON.parse(e.slice(6)).candidates[0].content.parts) expected += p.text ?? '';
+  assert.equal(text, expected);
+  assert.equal(stats.provider, 'gemini');
+  assert.equal(stats.events, 16);
+  assert.equal(stats.deltas, 15);
+  assert.equal(stats.done, true);
+  assert.equal(stats.inputTokens, 18);
+  assert.equal(stats.outputTokens, 374);
+  assert.equal(stats.reasoningTokens, 863);
+  assert.equal(stats.tokensPerSecond, (373 * 1000) / (stats.lastToken - stats.firstToken));
+});
+
+test('hidden reasoning is left out of the rate, streamed reasoning is counted', () => {
+  const chunk = (delta, usage) => `data: ${JSON.stringify({ choices: [{ delta }], ...(usage ? { usage } : {}) })}\n\n`;
+  const usage = { prompt_tokens: 5, completion_tokens: 100, completion_tokens_details: { reasoning_tokens: 80 } };
+
+  const hidden = meter('text/event-stream', [chunk({ content: 'a' }), chunk({ content: 'b' }, usage)]).stats;
+  assert.equal(hidden.outputTokens, 20);
+  assert.equal(hidden.reasoningTokens, 80);
+  assert.equal(hidden.tokensPerSecond, 1900);
+
+  const streamed = meter('text/event-stream', [chunk({ reasoning_content: 'think' }), chunk({ content: 'b' }, usage)]).stats;
+  assert.equal(streamed.outputTokens, 20);
+  assert.equal(streamed.tokensPerSecond, 9900);
+
+  const responses = meter('text/event-stream', [
+    'data: {"type":"response.output_text.delta","delta":"a"}\n\n',
+    'data: {"type":"response.output_text.delta","delta":"b"}\n\n',
+    'data: {"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":50,"output_tokens_details":{"reasoning_tokens":40}}}}\n\n',
+  ]).stats;
+  assert.equal(responses.outputTokens, 10);
+  assert.equal(responses.reasoningTokens, 40);
+});

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { aggregateRuns, buildReport } from '../lib/report.js';
 import { runOnce } from '../lib/run.js';
+import { StreamMeter } from '../lib/stream.js';
 import { renderRuns } from '../lib/term/panel.js';
 import { createStyle } from '../lib/term/style.js';
 import { listen } from './helpers/server.js';
@@ -121,4 +122,12 @@ test('a bug inside the tool is thrown, not reported as a network error', async (
 test('the live aggregate leaves out the per-run samples', () => {
   assert.equal(aggregateRuns([report(10)], 1, { samples: false }).samples, undefined);
   assert.equal(aggregateRuns([report(10)], 1).samples.length, 1);
+});
+
+test('warns when an event stream carries no events', () => {
+  const meter = new StreamMeter({ contentType: 'text/event-stream' });
+  meter.push(Buffer.from('{"error":{"code":503,"message":"high demand"}}\n'), 1);
+  meter.finish(2);
+  const report = buildReport({ request: { method: 'POST', url: new URL('http://x/'), headers: [], body: null }, meter });
+  assert.deepEqual(report.warnings, ['labelled text/event-stream, but no events arrived (the body is shown as received)']);
 });

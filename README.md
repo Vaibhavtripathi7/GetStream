@@ -16,23 +16,24 @@ dns 10.9 ms  tcp 5.6 ms  tls 25.1 ms  wait 11.6 ms  body 1.2 ms
 577 B  ·  480.8 kB/s
 ```
 
-A streamed chat completion (from the benchmark's mock server, which sends a
-token every 20 ms after a 400 ms pause):
+A streamed answer from Gemini. The model thought for 13 seconds (1,227
+reasoning tokens it does not stream) before writing a 20-token haiku:
 
 ```
-$ req "127.0.0.1:40701/stream?n=150&gap=20&ttft=400" -q
-200 OK GET http://127.0.0.1:40701/stream?n=150&gap=20&ttft=400 · sse · openai · 3.45 s
-▒───────████████████████████████████████████████████████████
-tcp 1.4 ms  wait 407 ms  body 3.04 s
-14.5 kB  ·  4.8 kB/s  ·  153 events
-first token 410 ms  ·  150 tokens  ·  49.4 tok/s
-gap between chunks  p50 20.3 ms  p95 21.0 ms  p99 21.4 ms  max 21.6 ms
-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃
+$ req "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?alt=sse" \
+    -H "x-goog-api-key: $GEMINI_API_KEY" -d '{"contents":[{"parts":[{"text":"Write a haiku about latency"}]}]}' -q
+200 OK POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?alt=sse · sse · gemini · 13.29 s
+░▒▓────────────────────────────────────────────────────────█
+dns 11.2 ms  tcp 7.8 ms  tls 12.2 ms  wait 13.08 s  body 172 ms
+7.6 kB  ·  44.0 kB/s  ·  3 events
+first token 13.12 s  ·  20 tokens + 1227 reasoning  ·  113 tok/s
+gap between chunks  p50 168 ms  p95 168 ms  p99 168 ms  max 168 ms
 ```
 
 On a terminal this panel is live: the generated text streams above it and
-the numbers update as chunks arrive. The last line plots recent gaps against
-their median, so a steady stream is flat and a stall shows up as a spike.
+the numbers update as chunks arrive. For longer streams a last line plots
+recent gaps against their median, so a steady stream is flat and a stall
+shows up as a spike.
 
 ## Install
 
@@ -60,6 +61,11 @@ req https://api.openai.com/v1/chat/completions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -d '{"model":"gpt-4o-mini","stream":true,"stream_options":{"include_usage":true},
        "messages":[{"role":"user","content":"Write a haiku about latency"}]}'
+
+# Gemini; alt=sse turns on server-sent events
+req "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?alt=sse" \
+  -H "x-goog-api-key: $GEMINI_API_KEY" \
+  -d '{"contents":[{"parts":[{"text":"Write a haiku about latency"}]}]}'
 
 # Ollama streams NDJSON by default
 req :11434/api/chat -d '{"model":"llama3.2","messages":[{"role":"user","content":"hi"}]}'
@@ -102,8 +108,12 @@ For streams:
 - **tokens** are only reported when the server sends a token count (OpenAI
   needs `stream_options.include_usage`). Without one, req counts chunks and
   says so, because a chunk can hold more than one token.
-- **tok/s** is `(tokens - 1) / (last token time - first token time)`, the
-  decode rate after the first token.
+- **reasoning** tokens are the thinking a model reports separately (OpenAI's
+  `reasoning_tokens`, Gemini's `thoughtsTokenCount`). When they are not
+  streamed they happen before the first token, so they show up in first
+  token time and are kept out of the rate.
+- **tok/s** is `(streamed tokens - 1) / (last token time - first token time)`,
+  the decode rate after the first token.
 
 `--timeline` adds the arrival times to the JSON report: of every chunk with
 text for an LLM stream, of every event otherwise.
@@ -192,9 +202,10 @@ Measured on a laptop, details and method in [BENCHMARKS.md](BENCHMARKS.md):
 - HTTP/1.1 only, and no proxy support.
 - Node adds about 0.8 ms to a loopback connect compared with curl; req
   cannot measure below its own event loop.
-- The LLM stream formats are tested against fixtures written from each
-  provider's documented format (`test/fixtures/`). The live runs so far
-  were against the mock server, not the real APIs.
+- Gemini was checked against the live API, and a captured stream is part
+  of the tests (`test/fixtures/gemini-live.sse`). The OpenAI, Anthropic and
+  Ollama formats are tested against fixtures written from their documented
+  formats, not yet against the live APIs.
 - Character widths follow East Asian Width; some emoji sequences joined
   with zero-width joiners may be measured wider than a terminal draws them.
 

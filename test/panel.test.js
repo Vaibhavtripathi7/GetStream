@@ -148,3 +148,9 @@ test('text from the server is made printable and kept on one line', () => {
   const failed = renderPanel({ ...report, error: { kind: 'tls', phase: 'tls', message: 'bad \x1b[31mcert' } }, { style: createStyle(false) })[0];
   assert.match(failed, /bad ␛\[31mcert/);
 });
+
+test('shows reasoning tokens next to the answer tokens', () => {
+  const thinking = { ...report, body: { ...report.body, outputTokens: 374, reasoningTokens: 863, tokensPerSecond: 140 } };
+  const text = renderPanel(thinking, { style: createStyle(false) }).join('\n');
+  assert.match(text, /374 tokens \+ 863 reasoning {2}· {2}140 tok\/s/);
+});
